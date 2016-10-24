@@ -1,6 +1,5 @@
 #ifndef LMS_H
 #define LMS_H
-#endif
 
 class LMS {
 public:
@@ -10,3 +9,5 @@ public:
 
 
 };
+
+#endif

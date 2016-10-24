@@ -1,6 +1,5 @@
 #ifndef DELAY_ESTIMATOR
 #define DELAY_ESTIMATOR
-#endif
 
 class DelayEstimator {
 public:
@@ -14,3 +13,5 @@ protected:
   int delay_;
   int xcorr_magnitude_;
 };
+
+#endif

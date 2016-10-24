@@ -1,6 +1,5 @@
 #ifndef FIR_H
 #define FIR_H
-#endif
 
 class FIR {
 public:
@@ -13,3 +12,5 @@ protected:
   int* weights;
   int* weight_length;
 };
+
+#endif

@@ -1,0 +1,9 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.205760484/CYGWIN_HOME/delimiter=;
+environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.205760484/CYGWIN_HOME/operation=replace
+environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.205760484/CYGWIN_HOME/value=nodosfilewarning
+environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.205760484/PATH/delimiter=;
+environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.205760484/PATH/operation=replace
+environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.205760484/PATH/value=C\:\\SysGCC\\Raspberry\\bin;${CYGWIN_HOME}\\bin;C\:/Program Files/Java/jre1.8.0_101/bin/server;C\:/Program Files/Java/jre1.8.0_101/bin;C\:/Program Files/Java/jre1.8.0_101/lib/amd64;C\:\\ProgramData\\Oracle\\Java\\javapath;D\:\\Oculus\\Support\\oculus-runtime;C\:\\Windows\\system32;C\:\\Windows;C\:\\Windows\\System32\\Wbem;C\:\\Windows\\System32\\WindowsPowerShell\\v1.0\\;C\:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common;D\:\\Program Files (x86)\\Git\\cmd;C\:\\Program Files (x86)\\Windows Kits\\8.1\\Windows Performance Toolkit\\;C\:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\;C\:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\;C\:\\Program Files\\Microsoft SQL Server\\120\\Tools\\Binn\\;D\:\\Program Files\\nodejs\\;C\:\\WINDOWS\\system32;C\:\\WINDOWS;C\:\\WINDOWS\\System32\\Wbem;C\:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C\:\\Program Files (x86)\\Kensington\\TrackballWorks;C\:\\Users\\Cheng\\AppData\\Roaming\\npm;%USERPROFILE%\\AppData\\Local\\Microsoft\\WindowsApps;;C\:\\Users\\Cheng\\Desktop;
+environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.205760484/append=true
+environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.205760484/appendContributed=true

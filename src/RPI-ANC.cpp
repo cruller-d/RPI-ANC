@@ -1,16 +1,20 @@
-	#include <stdio.h>
-	#include <stdlib.h>
-	#include <errno.h>
-	#include <poll.h>
-	#include <alsa/asoundlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <poll.h>
+#include <alsa/asoundlib.h>
 
+#include "latency_Estimator/Latency_Estimator.h"
+
+#define BUFSIZE 4096
 int             restarting;
-
 int             nchannels = 2;
-int             buffer_size = 512;
-int             sample_rate = 48000;
+int             buffer_size = BUFSIZE;
+int             sample_rate = 16000;
 int             bits = 16;
-short buf[512 * 4];
+
+short in_buf[BUFSIZE * 2];
+short out_buf[BUFSIZE * 2];
 
 //char           *snd_device_in  = "plughw:0,0";
 //char           *snd_device_out = "plughw:0,0";
@@ -82,70 +86,92 @@ int configure_alsa_audio (snd_pcm_t *device, int channels) {
     return 0;
 }
 
+short l_buf[BUFSIZE];
+short r_buf[BUFSIZE];
+LatencyEstimator le;
+bool MasterTick(short * output, short* input, int frames) {
+	for (int i = 0; i < frames; ++i) {
+		char* i_byte = (char*)(input + 2 * i);
+  	short sample_right = i_byte[0] + (i_byte[1] << 8);
+  	short sample_left = i_byte[2] + (i_byte[3] << 8);
+  	l_buf[i] = sample_left;
+  	r_buf[i] = sample_right;
+  	char* o_byte = (char*)(output + 2 * i);
+  	o_byte[0] = sample_right & 0xff;
+  	o_byte[1] = (sample_right >> 8) & 0xff;
+  	o_byte[2] = sample_left & 0xff;
+  	o_byte[3] = (sample_left >> 8) & 0xff;
+  }
+	le.CalcDelay(l_buf, r_buf, 512);
+  return true;
+}
+
 int main (int argc, char * argv[]) {
-	int err;
-	if ((err = snd_pcm_open(&playback_handle, argv[1], SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
-	    fprintf(stderr, "cannot open output audio device %s: %s\n", argv[1], snd_strerror(err));
-	    exit(1);
-	}
-	if ((err = snd_pcm_open(&capture_handle, argv[1], SND_PCM_STREAM_CAPTURE, 0)) < 0) {
-	    fprintf(stderr, "cannot open input audio device %s: %s\n", argv[1], snd_strerror(err));
-	    exit(1);
-	}
-	printf("pcm open\n");
+  int err;
+  if ((err = snd_pcm_open(&playback_handle, argv[1], SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
+    fprintf(stderr, "cannot open output audio device %s: %s\n", argv[1], snd_strerror(err));
+    exit(1);
+  }
+  if ((err = snd_pcm_open(&capture_handle, argv[1], SND_PCM_STREAM_CAPTURE, 0)) < 0) {
+    fprintf(stderr, "cannot open input audio device %s: %s\n", argv[1], snd_strerror(err));
+    exit(1);
+  }
+  printf("pcm open\n");
 
-	configure_alsa_audio(playback_handle,  nchannels);
-	configure_alsa_audio(capture_handle, nchannels);
-	printf("alsa audio configured\n");
+  configure_alsa_audio(playback_handle,  nchannels);
+  configure_alsa_audio(capture_handle, nchannels);
+  printf("alsa audio configured\n");
 
-	int frames, inframes, outframes, frame_size;
-	int fragments = 2;
+  int frames, inframes, outframes, frame_size;
+  int fragments = 2;
 
-	while (1) {
-	    frame_size = nchannels * (bits / 8);
-	    frames = buffer_size / frame_size;
+  while (1) {
+    frame_size = nchannels * (bits / 8);
+    frames = buffer_size / frame_size;
 
-	    if (restarting) {
-	        restarting = 0;
-	        /* drop any output we might got and stop */
-	        snd_pcm_drop(capture_handle);
-	        snd_pcm_drop(playback_handle);
-	        /* prepare for use */
-	        snd_pcm_prepare(capture_handle);
-	        snd_pcm_prepare(playback_handle);
+    if (restarting) {
+      restarting = 0;
+      /* drop any output we might got and stop */
+      snd_pcm_drop(capture_handle);
+      snd_pcm_drop(playback_handle);
+      /* prepare for use */
+      snd_pcm_prepare(capture_handle);
+      snd_pcm_prepare(playback_handle);
 
-	    /* fill the whole output buffer */
-	    for (int i = 0; i < fragments; i += 1)
-	    	snd_pcm_writei(playback_handle, buf, frames);
-	    }
+      /* fill the whole output buffer */
+      for (int i = 0; i < fragments; i += 1) {
+      		snd_pcm_writei(playback_handle, out_buf, frames);
+      }
+    }
 
-	    while ((inframes = snd_pcm_readi(capture_handle, buf, frames)) < 0) {
-	        if (inframes == -EAGAIN)
-	            continue;
-	    // by the way, writing to terminal emulator is costly if you use
-	    // bad emulators like gnome-terminal, so don't do this.
-	        fprintf(stderr, "Input buffer overrun\n");
-	        restarting = 1;
-	        snd_pcm_prepare(capture_handle);
-	    }
-	    if (inframes != frames)
-	        fprintf(stderr, "Short read from capture device: %d, expecting %d\n", inframes, frames);
+    while ((inframes = snd_pcm_readi(capture_handle, in_buf, frames)) < 0) {
+      if (inframes == -EAGAIN)
+	continue;
+      // by the way, writing to terminal emulator is costly if you use
+      // bad emulators like gnome-terminal, so don't do this.
+      fprintf(stderr, "Input buffer overrun\n");
+      restarting = 1;
+      snd_pcm_prepare(capture_handle);
+    }
+    if (inframes != frames)
+      fprintf(stderr, "Short read from capture device: %d, expecting %d\n", inframes, frames);
 
-	    /* now processes the frames */
-	    //do_something(rdbuf, inframes);
+    // now processes the frames
+    MasterTick(out_buf, in_buf, inframes);
+    //do_something(rdbuf, inframes);
 
-	    while ((outframes = snd_pcm_writei(playback_handle, buf, inframes)) < 0) {
-	        if (outframes == -EAGAIN)
-	            continue;
-	        fprintf(stderr, "Output buffer underrun\n");
-	        restarting = 1;
-	        snd_pcm_prepare(playback_handle);
-	    }
-	    if (outframes != inframes) {
-	        fprintf(stderr, "Short write to playback device: %d, expecting %d\n", outframes, frames);
-	    }
-	}
-	return 0;
+    while ((outframes = snd_pcm_writei(playback_handle, out_buf, inframes)) < 0) {
+      if (outframes == -EAGAIN)
+        continue;
+      fprintf(stderr, "Output buffer underrun\n");
+      restarting = 1;
+      snd_pcm_prepare(playback_handle);
+    }
+    if (outframes != inframes) {
+      fprintf(stderr, "Short write to playback device: %d, expecting %d\n", outframes, frames);
+    }
+  }
+  return 0;
 }
 
 //

@@ -31,7 +31,7 @@ int configure_alsa_audio (snd_pcm_t *device, int channels) {
 	if ((err = snd_pcm_hw_params_malloc(&hw_params)) < 0) {
 	    fprintf (stderr, "cannot allocate parameter structure (%s)\n", snd_strerror(err));
 	    return 1;
-	}
+	}//
 	/* fill structure from current audio parameters */
 	if ((err = snd_pcm_hw_params_any(device, hw_params)) < 0) {
 	    fprintf (stderr, "cannot initialize parameter structure (%s)\n", snd_strerror(err));
@@ -102,12 +102,12 @@ bool MasterTick(short * output, short* input, int frames) {
   	o_byte[2] = sample_left & 0xff;
   	o_byte[3] = (sample_left >> 8) & 0xff;
   }
-	le.CalcDelay(l_buf, r_buf, 512);
+	le.PushSignals(l_buf, r_buf, 512);
   return true;
 }
 
 int main (int argc, char * argv[]) {
-  int err;
+  int err;//
   if ((err = snd_pcm_open(&playback_handle, argv[1], SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
     fprintf(stderr, "cannot open output audio device %s: %s\n", argv[1], snd_strerror(err));
     exit(1);

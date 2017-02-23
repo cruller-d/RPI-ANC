@@ -12,10 +12,10 @@ public:      // Note the 1 space indent!
   int GetLength();
 
 private:
-  int* buffer_array_;
-  int* head_;
+  int* p_buffer_array_;
+  unsigned int p_head_;
   unsigned int length_;
-  int max_buffer_length_;
+  unsigned int max_buffer_length_;
 
   bool initialize();
 };

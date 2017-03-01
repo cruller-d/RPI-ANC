@@ -21,7 +21,7 @@ for i = 1 : _simLength
 	endif
 end
 
-chn = initChannel(_delay, 1);
+chn = initChannel(_delay, 0.5);
 estimator = initLatencyEstimator(_estimatorBufferLength, _minQ);
 filter = initFIRFilter(_FIRLength);
 tuner = initAdaptiveFilterTuner(_adaptiveFilterBufferLength, _FIRLength, 1);

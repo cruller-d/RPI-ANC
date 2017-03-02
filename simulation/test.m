@@ -26,10 +26,10 @@ estimator = initLatencyEstimator(_estimatorBufferLength, _minQ);
 filter = initFIRFilter(_FIRLength);
 tuner = initAdaptiveFilterTuner(_adaptiveFilterBufferLength, _FIRLength, 1);
 
-channelOutputSamples = zeros(1, length(input));
-filterOutputSamples = zeros(1, length(input));
-errSamples = zeros(1, length(input));
-delayedInputSamples = zeros(1, length(input));
+channelOutputSamples = [];#zeros(1, length(input));
+filterOutputSamples = [];#zeros(1, length(input));
+errSamples = [];#zeros(1, length(input));
+delayedInputSamples = [];#zeros(1, length(input));
 
 status = 0;
 for i = 1 : length(input)
@@ -59,10 +59,13 @@ for i = 1 : length(input)
 	endif
 
 	if mod(i, 1000) == 0
+		subplot(2, 1, 1);
 		hold off;
 		plot(channelOutputSamples, 'b');
 		hold on;
 		plot(filterOutputSamples, 'r');
 		plot(errSamples, 'g');
+		subplot(2, 1, 2);
+		plot(filter.weight);
 	endif
 end

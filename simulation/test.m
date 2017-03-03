@@ -4,7 +4,7 @@ close all
 _mju = 0.5;
 _delay = 100;
 _FIRLength = 64;
-_skip = 1000;
+_skip = 10000;
 _simLength = 44100 * 10;
 _estimatorBufferLength = 1000;
 _adaptiveFilterBufferLength = 100;
@@ -69,3 +69,5 @@ for i = 1 : length(input)
 		plot(filter.weight);
 	endif
 end
+
+attenuation = sum(channelOutputSamples(1 : 40000).^2) / sum(filterOutputSamples(1 : 40000).^2);

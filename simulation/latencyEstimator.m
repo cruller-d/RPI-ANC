@@ -54,7 +54,7 @@ function [estimator, delay, q] = latencyEstimator (estimator, sample1, sample2)
 		if (best != 0) && (secondBest != 0)
 			q = abs(best / secondBest);
 			if q > estimator.q
-				delay = bestIndex - 1 - (length(corrResult) + 1) / 2;
+				delay = bestIndex - (length(corrResult) + 1) / 2;
 			endif
 		endif
 		estimator.currentLength = 0;

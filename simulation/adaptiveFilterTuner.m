@@ -18,6 +18,7 @@ function [tuner, dWeight] = adaptiveFilterTuner (tuner, inputSample, errSample, 
 		if i + delay - 1 >= 1
 			dn1 = tuner.inputFIFO(i + delay - 1);
 		endif
-		dWeight(i) = errSample * (delayedInputSample + dn1 + dp1) / 3;
+		dWeight(i) = errSample * delayedInputSample;
+		#dWeight(i) = errSample * (delayedInputSample + dn1 + dp1) / 3;
 	end
 endfunction

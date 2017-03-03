@@ -11,6 +11,7 @@ _estimatorBufferLength = 1000;
 _adaptiveFilterBufferLength = 100;
 _minQ = 2;
 _noiseLevel = 0.01;
+_testLevel = 0.1;
 
 streetRecording = wavread('Road with cars, different... _ Strassenverkehr mit Autos, ... (5684171).wav' );
 
@@ -23,8 +24,8 @@ for i = 1 : _simLength
 	endif
 end
 
-primaryChannel = initChannel(_primaryChannelDelay, 0.1);
-secondaryChannel = initChannel(_secondaryChannelDelay, 0.5);
+primaryChannel = initChannel(_primaryChannelDelay, 1);
+secondaryChannel = initChannel(_secondaryChannelDelay, 1);
 estimator = initLatencyEstimator(_estimatorBufferLength, _minQ);
 mailFilter = initFIRFilter(_FIRLength);
 secondaryFilter = initFIRFilter(_FIRLength);
@@ -33,7 +34,7 @@ tuner = initAdaptiveFilterTuner(_adaptiveFilterBufferLength, _FIRLength, 1);
 primaryChannelOutputSamples = [];
 secondaryChannelOutputSamples = [];
 speakerOutputSamples = [];
-mixSamples = [];
+micInputSamples = [];
 
 status = 0;
 cnt = 0;
@@ -46,14 +47,16 @@ for i = 1 : length(input)
 	# STATE MACHINE
 	if status == 0 # measure latency for secondary channel
 		# stim
-		testSample = (rand() - 0.5) * _noiseLevel * 10;
+		testSample = (rand() - 0.5) * _testLevel;
 		speakerOutputSamples(i) = testSample;
 
 		# test sample propagates through secondary channel
-		[secondaryChannel, secondaryChannelOutputSample] = channel(secondaryChannel, testSample);
+		[secondaryChannel, secondaryChannelOutputSample] = channel(secondaryChannel, speakerOutputSamples(i));
+		secondaryChannelOutputSamples(i) = secondaryChannelOutputSample;
 
+		micInputSamples(i) = primaryChannelOutputSamples(i) + secondaryChannelOutputSamples(i) + micNoiseSample;
 		# measure latency
-		[estimator, delay, q] = latencyEstimator(estimator, testSample, secondaryChannelOutputSample + micNoiseSample);
+		[estimator, delay, q] = latencyEstimator(estimator, testSample, micInputSamples(i));
 		
 		cnt += 1;
 		if (q > _minQ)
@@ -67,7 +70,7 @@ for i = 1 : length(input)
 			q
 		endif
 	elseif status == 1 # train filter to simulate secondary channel
-		testSample = (rand() - 0.5) * _noiseLevel * 2;
+		testSample = (rand() - 0.5) * _testLevel;
 		speakerOutputSamples(i) = testSample;
 
 		# stim goes through delay line and then adaptive filter
@@ -75,9 +78,12 @@ for i = 1 : length(input)
 		[secondaryFilter, pseudoSecondarySample] = FIRFilter(secondaryFilter, delayedTestSample);
 
 		# test sample propagates through secondary channel
-		[secondaryChannel, secondaryChannelOutputSample] = channel(secondaryChannel, testSample);
+		[secondaryChannel, secondaryChannelOutputSample] = channel(secondaryChannel, speakerOutputSamples(i));
+		secondaryChannelOutputSamples(i) = secondaryChannelOutputSample;
+		micInputSamples(i) = primaryChannelOutputSamples(i) + secondaryChannelOutputSamples(i) + micNoiseSample;
+		
+		errSample = micInputSamples(i) - pseudoSecondarySample;
 
-		errSample = secondaryChannelOutputSample - pseudoSecondarySample + micNoiseSample;
 		[tuner, dw] = adaptiveFilterTuner(tuner, delayedTestSample, errSample, 0);
 		secondaryFilter.weight += dw * _mju;
 
@@ -88,6 +94,7 @@ for i = 1 : length(input)
 		if cnt > 1000 && sqSignal / sqErr > 1000
 			status = 2;
 			cnt = 0;
+			break;
 		endif
 	elseif status == 2 # measure latency for primary channel
 		# input signal goes through delay line and filtered
@@ -96,6 +103,10 @@ for i = 1 : length(input)
 		[estimator, remainderDelay, q] = latencyEstimator(estimator, pseudoSecondarySample, primaryChannelOutputSample + micNoiseSample);
 		
 		speakerOutputSamples(i) = 0;
+		[secondaryChannel, secondaryChannelOutputSample] = channel(secondaryChannel, speakerOutputSamples(i));
+		secondaryChannelOutputSamples(i) = secondaryChannelOutputSample;
+		micInputSamples(i) = primaryChannelOutputSamples(i) + secondaryChannelOutputSamples(i) + micNoiseSample;
+		
 		cnt += 1;
 		if (q > _minQ)
 			cnt
@@ -110,6 +121,7 @@ for i = 1 : length(input)
 	elseif status == 3 # train filter according to outside signals passing through primary channel
 		[mainDelayLine, delayedInputSample] = FIFO(mainDelayLine, inputSample + micNoiseSample);
 		[mailFilter, filterOutputSample] = FIRFilter(mainFilter, delayedInputSample);
+
 		errSample = primaryChannelOutputSample - filterOutputSample;
 		[tuner, dw] = adaptiveFilterTuner(tuner, delayedInputSample, errSample, 0);
 		mailFilter.weight += dw * _mju;
@@ -117,6 +129,8 @@ for i = 1 : length(input)
 		sqErr = sqErr * 0.9 + errSample ^2 * 0.1;
 
 		speakerOutputSamples(i) = 0;
+		[secondaryChannel, secondaryChannelOutputSample] = channel(secondaryChannel, speakerOutputSamples(i));
+		secondaryChannelOutputSamples(i) = secondaryChannelOutputSample;
 		cnt += 1;
 		if cnt > 1000 && sqSignal / sqErr > 1000
 			status = 4;
@@ -126,22 +140,36 @@ for i = 1 : length(input)
 		[mainDelayLine, delayedInputSample] = FIFO(mainDelayLine, inputSample + micNoiseSample);
 		[mailFilter, filterOutputSample] = FIRFilter(mainFilter, delayedInputSample);
 		speakerOutputSamples(i) = filterOutputSample * -1;
+		[secondaryChannel, secondaryChannelOutputSample] = channel(secondaryChannel, speakerOutputSamples(i));
+		secondaryChannelOutputSamples(i) = secondaryChannelOutputSample;
 	endif
-
-	[secondaryChannel, secondaryChannelOutputSample] = channel(secondaryChannel, testSample);
-	secondaryChannelOutputSamples(i) = secondaryChannelOutputSample;
 	mixSamples(i) = primaryChannelOutputSamples(i) + secondaryChannelOutputSamples(i);
 
-	if mod(i, 1000) == 0
-		subplot(2, 2, 1);
+	if mod(i, 100) == 0
+		subplot(2, 3, 1);
 		plot(primaryChannelOutputSamples);
-		subplot(2, 2, 2);
+		subplot(2, 3, 2);
 		plot(secondaryChannelOutputSamples);
-		subplot(2, 2, 3);
+		subplot(2, 3, 3);
 		plot(speakerOutputSamples);
-		subplot(2, 2, 4);
+		subplot(2, 3, 4);
 		plot(mixSamples);
+		subplot(2, 3, 5);
+		plot(mailFilter.weight);
+		subplot(2, 3, 6);
+		plot(secondaryFilter.weight);
 	endif
 end
 
-attenuation = sum(primaryChannelOutputSamples(1 : 100000).^2) / sum(filterOutputSamples(1 : 100000).^2)
+		subplot(2, 3, 1);
+		plot(primaryChannelOutputSamples);
+		subplot(2, 3, 2);
+		plot(secondaryChannelOutputSamples);
+		subplot(2, 3, 3);
+		plot(speakerOutputSamples);
+		subplot(2, 3, 4);
+		plot(mixSamples);
+		subplot(2, 3, 5);
+		plot(mailFilter.weight);
+		subplot(2, 3, 6);
+		plot(secondaryFilter.weight);

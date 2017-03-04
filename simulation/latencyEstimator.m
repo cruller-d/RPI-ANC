@@ -1,4 +1,4 @@
-function [estimator, delay, q] = latencyEstimator (estimator, sample1, sample2)
+function [estimator, delay, q, best, secondBest] = latencyEstimator (estimator, sample1, sample2)
 
 	for i = estimator.bufferLength : -1 : 2
 		estimator.data1(i) = estimator.data1(i - 1);
@@ -11,6 +11,10 @@ function [estimator, delay, q] = latencyEstimator (estimator, sample1, sample2)
 	q = 0;
 	if estimator.currentLength < estimator.bufferLength
 		estimator.currentLength += 1;
+		best = 0;
+		secondBest = 0;
+		bestIndex = 0;
+		secondBestIndex = 0;
 	else
 		l = estimator.bufferLength;
 		leftData = estimator.data1(1:l);
